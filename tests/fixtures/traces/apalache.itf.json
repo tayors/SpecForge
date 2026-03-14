@@ -1,0 +1,20 @@
+{
+  "states": [
+    {
+      "#meta": {
+        "action": "Claim"
+      },
+      "queue": [2],
+      "holder": 1,
+      "acked": []
+    },
+    {
+      "#meta": {
+        "action": "Ack"
+      },
+      "queue": [2],
+      "holder": 0,
+      "acked": [1]
+    }
+  ]
+}

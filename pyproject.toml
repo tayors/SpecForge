@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "formal-check"
+version = "0.1.0"
+description = "TLA+-first formal verification platform for multi-repo Codex use"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "PyYAML>=6.0,<7",
+  "jsonschema>=4.21,<5",
+]
+
+[project.scripts]
+formal-check = "formal_check.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+formal_check = [
+  "schema/*.json",
+  "templates/**/*.cfg",
+  "templates/**/*.py",
+  "templates/**/*.tla",
+  "templates/**/*.yaml",
+]

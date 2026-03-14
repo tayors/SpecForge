@@ -1,0 +1,65 @@
+version: 1
+project:
+  name: workflow-service
+  domain: stateful-workflows
+  owners:
+    - team-workflow
+maturity: discovering
+toolchains:
+  pinset: default
+  allow_auto_sync: false
+specs:
+  - id: retry-lease
+    kind: tla
+    entry: formal/RetryLease.tla
+    module: RetryLease
+    cfg: formal/RetryLease.cfg
+    profiles:
+      pr:
+        checker: apalache
+        length: 8
+      full:
+        checker: tlc
+invariants:
+  - id: at-most-one-holder
+    spec: retry-lease
+    expr: AtMostOneHolder
+    kind: safety
+    severity: critical
+    maps_to:
+      code:
+        - src/main/java/example/LeaseService.java
+      tests:
+        - src/test/java/example/LeaseServiceTest.java
+  - id: ack-never-requeues
+    spec: retry-lease
+    expr: AckedJobsStayOutOfQueue
+    kind: safety
+    severity: high
+    maps_to:
+      code:
+        - src/main/java/example/RetryWorker.java
+      tests:
+        - src/test/java/example/RetryWorkerTest.java
+actions:
+  - id: claim-lease
+    spec: retry-lease
+    tla_action: Claim
+    implemented_by:
+      - src/main/java/example/LeaseService.java
+  - id: retry-job
+    spec: retry-lease
+    tla_action: Retry
+    implemented_by:
+      - src/main/java/example/RetryWorker.java
+  - id: ack-job
+    spec: retry-lease
+    tla_action: Ack
+    implemented_by:
+      - src/main/java/example/AckHandler.java
+proof_obligations: []
+policy:
+  block_on:
+    - critical
+    - high
+  output_dir: output/formal

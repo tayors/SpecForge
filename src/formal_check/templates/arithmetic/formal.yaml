@@ -1,0 +1,27 @@
+version: 1
+project:
+  name: quota-service
+  domain: arithmetic-protocols
+  owners:
+    - team-quota
+maturity: discovering
+toolchains:
+  pinset: default
+  allow_auto_sync: false
+specs:
+  - id: quota-arithmetic
+    kind: z3py
+    entry: formal/quota_model.py
+invariants: []
+actions: []
+proof_obligations:
+  - id: quota-never-negative
+    spec: quota-arithmetic
+    backend: z3
+    entry: formal/quota_model.py
+    objective: sat_counterexample
+    severity: critical
+policy:
+  block_on:
+    - critical
+  output_dir: output/formal

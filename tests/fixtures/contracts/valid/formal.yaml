@@ -1,0 +1,22 @@
+version: 1
+project:
+  name: valid-example
+maturity: advisory
+toolchains:
+  pinset: default
+specs:
+  - id: quota
+    kind: z3py
+    entry: formal/quota.py
+invariants: []
+actions: []
+proof_obligations:
+  - id: quota-safe
+    spec: quota
+    backend: z3
+    entry: formal/quota.py
+    objective: sat_counterexample
+    severity: high
+policy:
+  block_on:
+    - critical

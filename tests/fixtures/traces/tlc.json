@@ -1,0 +1,18 @@
+{
+  "states": [
+    {
+      "action": "Claim",
+      "state": {
+        "queue": [2],
+        "holder": 1
+      }
+    },
+    {
+      "action": "Retry",
+      "state": {
+        "queue": [2, 1],
+        "holder": 0
+      }
+    }
+  ]
+}

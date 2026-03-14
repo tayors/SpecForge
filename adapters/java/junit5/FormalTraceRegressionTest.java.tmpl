@@ -1,0 +1,21 @@
+package formal.regressions;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+class {{ClassName}} {
+    @Test
+    void reproduces{{MethodSuffix}}() throws Exception {
+        // Placeholder: wire this into repo-specific fixtures or service bootstrapping.
+        String tracePath = "{{TracePath}}";
+        String invariantId = "{{CheckId}}";
+        String backend = "{{Backend}}";
+
+        // Last observed action path: {{ActionPath}}
+        // Last observed state payload:
+        // {{StateSnapshot}}
+
+        assertTrue(true, "Replace with a real regression assertion for " + invariantId + " from " + backend + " using " + tracePath);
+    }
+}

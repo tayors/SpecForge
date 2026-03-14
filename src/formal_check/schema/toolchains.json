@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "toolchains": {
+    "apalache": {
+      "version": "0.52.2",
+      "artifacts": [
+        {
+          "platform": "any",
+          "filename": "apalache-0.52.2.tgz",
+          "url": "https://github.com/apalache-mc/apalache/releases/download/v0.52.2/apalache-0.52.2.tgz",
+          "sha256": "e0ebea7e45c8f99df8d92f2755101dda84ab71df06d1ec3a21955d3b53a886e2",
+          "format": "tgz"
+        }
+      ],
+      "binary_glob": "bin/apalache-mc"
+    },
+    "tlc": {
+      "version": "1.7.4",
+      "artifacts": [
+        {
+          "platform": "any",
+          "filename": "tla2tools.jar",
+          "url": "https://github.com/tlaplus/tlaplus/releases/download/v1.7.4/tla2tools.jar",
+          "sha256": "936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88",
+          "format": "file"
+        }
+      ],
+      "binary_glob": "tla2tools.jar"
+    },
+    "z3py": {
+      "version": "4.16.0.0",
+      "artifacts": [
+        {
+          "platform": "darwin-arm64",
+          "filename": "z3_solver-4.16.0.0-py3-none-macosx_15_0_arm64.whl",
+          "url": "https://files.pythonhosted.org/packages/py3/z/z3-solver/z3_solver-4.16.0.0-py3-none-macosx_15_0_arm64.whl",
+          "sha256": "cc52843cfdd3d3f2cd24bedc62e71c18af8c8b7b23fb05e639ab60b01b5f8f2f",
+          "format": "wheel"
+        },
+        {
+          "platform": "darwin-x86_64",
+          "filename": "z3_solver-4.16.0.0-py3-none-macosx_15_0_x86_64.whl",
+          "url": "https://files.pythonhosted.org/packages/py3/z/z3-solver/z3_solver-4.16.0.0-py3-none-macosx_15_0_x86_64.whl",
+          "sha256": "e292df40951523e4ecfbc8dee549d93dee00a3fe4ee4833270d19876b713e210",
+          "format": "wheel"
+        },
+        {
+          "platform": "linux-x86_64",
+          "filename": "z3_solver-4.16.0.0-py3-none-manylinux_2_27_x86_64.whl",
+          "url": "https://files.pythonhosted.org/packages/py3/z/z3-solver/z3_solver-4.16.0.0-py3-none-manylinux_2_27_x86_64.whl",
+          "sha256": "afae2551f795670f0522cfce82132d129c408a2694adff71eb01ba0f2ece44f9",
+          "format": "wheel"
+        },
+        {
+          "platform": "linux-arm64",
+          "filename": "z3_solver-4.16.0.0-py3-none-manylinux_2_38_aarch64.whl",
+          "url": "https://files.pythonhosted.org/packages/py3/z/z3-solver/z3_solver-4.16.0.0-py3-none-manylinux_2_38_aarch64.whl",
+          "sha256": "358648c3b5ef82b9ec9a25711cf4fc498c7881f03a9f4a2ea6ffa9304ca65d94",
+          "format": "wheel"
+        }
+      ],
+      "python_path_glob": "z3"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "backend": "z3",
+  "status": "failed",
+  "summary": "Counterexample where quota goes negative after a spend.",
+  "spec": {
+    "id": "quota-arithmetic",
+    "kind": "z3py"
+  },
+  "check": {
+    "id": "quota-never-negative",
+    "kind": "proof_obligation",
+    "expr": "quota-never-negative",
+    "severity": "critical",
+    "objective": "sat_counterexample"
+  },
+  "action_path": [],
+  "steps": [
+    {
+      "index": 0,
+      "action": "sat_counterexample",
+      "state": {
+        "quota": 3,
+        "spend": 5,
+        "next_quota": -2
+      }
+    }
+  ],
+  "mappings": {
+    "code": [
+      "formal/quota_model.py"
+    ],
+    "tests": []
+  },
+  "raw_artifacts": {
+    "entry": "formal/quota_model.py"
+  }
+}

@@ -1,0 +1,13 @@
+version: 1
+project:
+  name: invalid-example
+maturity: advisory
+toolchains:
+  pinset: default
+specs:
+  - id: quota
+    kind: z3py
+    entry: formal/quota.py
+invariants: []
+actions: []
+proof_obligations: []
