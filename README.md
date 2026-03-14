@@ -112,26 +112,6 @@ scripts/formal-check-full.sh --project-root /path/to/repo
 
 Both wrappers sync the pinned toolchains before running checks.
 
-## How other people use it
-
-Clone the shared repo, install the CLI, and sync the pinned toolchains:
-
-```bash
-git clone https://github.com/tayors/SpecForge.git
-cd SpecForge
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .
-formal-check toolchain sync
-```
-
-Each adopting application repo then adds:
-
-- a root `formal.yaml`
-- formal assets under `formal/`
-- optional CI calls to `formal-check`
-- optional Codex skill installation from `skill/formal-check/`
-
 ## Layout
 
 - `src/formal_check/`: CLI and platform runtime
