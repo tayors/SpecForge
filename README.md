@@ -2,9 +2,6 @@
 
 SpecForge is a TLA+-first formal verification platform for multi-repo Codex use.
 
-The product brand is **SpecForge**. The repository, Python package, and CLI command remain
-`formal-check`.
-
 It ships three surfaces:
 
 - a Python CLI named `formal-check`
