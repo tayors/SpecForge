@@ -1,11 +1,11 @@
 ---
 name: "formal-check"
-description: "Use when a repository exposes a root-level `formal.yaml` or when the user wants TLA+-first formal checking, Apalache or TLC bounded checks, Z3Py companion-model runs, counterexample explanation, or regression-test scaffolding. Always shell through the `formal-check` CLI rather than re-implementing solver logic in-prompt."
+description: "Use when a repository exposes a root-level `formal.yaml` or when the user wants SpecForge-style TLA+-first formal checking, Apalache or TLC bounded checks, Z3Py companion-model runs, counterexample explanation, or regression-test scaffolding. Always shell through the `formal-check` CLI rather than re-implementing solver logic in-prompt."
 ---
 
-# formal-check Skill
+# SpecForge Skill
 
-Drive the `formal-check` platform through its CLI. Do not re-implement solver orchestration in-prompt.
+Drive the SpecForge platform through the `formal-check` CLI. Do not re-implement solver orchestration in-prompt.
 Treat `formal.yaml` as the contract of record and TLA+ as the source of truth for stateful behavior.
 
 ## Prerequisite check

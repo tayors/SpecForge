@@ -1,4 +1,4 @@
 version: 1
 display_name: formal-check
-short_description: Run TLA+, Apalache, TLC, and Z3Py checks through the formal-check CLI.
-default_prompt: Use $formal-check to run the repo's formal verification contract, explain any counterexample, and map it back to code and tests.
+short_description: Run SpecForge formal checks through the formal-check CLI.
+default_prompt: Use $formal-check to run the repo's SpecForge contract, explain any counterexample, and map it back to code and tests.
