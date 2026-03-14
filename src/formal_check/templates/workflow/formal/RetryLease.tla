@@ -1,16 +1,24 @@
 ---- MODULE RetryLease ----
 EXTENDS Integers, Sequences
 
-CONSTANT Jobs
+CONSTANTS
+    \* @type: Set(Int);
+    Jobs
+
 ASSUME Jobs = 1..2
 
-VARIABLES queue, holder, acked, attempts
+VARIABLES
+    \* @type: Seq(Int);
+    queue,
+    \* @type: Int;
+    holder,
+    \* @type: Set(Int);
+    acked
 
 Init ==
     /\ queue = <<1, 2>>
     /\ holder = 0
     /\ acked = {}
-    /\ attempts = [j \in Jobs |-> 0]
 
 Claim ==
     /\ holder = 0
@@ -18,7 +26,6 @@ Claim ==
     /\ holder' = Head(queue)
     /\ queue' = Tail(queue)
     /\ acked' = acked
-    /\ attempts' = [attempts EXCEPT ![holder'] = @ + 1]
 
 Retry ==
     /\ holder # 0
@@ -26,20 +33,17 @@ Retry ==
     /\ queue' = Append(queue, holder)
     /\ holder' = 0
     /\ acked' = acked
-    /\ attempts' = attempts
 
 Ack ==
     /\ holder # 0
     /\ holder' = 0
     /\ acked' = acked \cup {holder}
     /\ queue' = queue
-    /\ attempts' = attempts
 
 Stutter ==
     /\ holder' = holder
     /\ queue' = queue
     /\ acked' = acked
-    /\ attempts' = attempts
 
 Next ==
     Claim \/ Retry \/ Ack \/ Stutter
@@ -48,9 +52,8 @@ AtMostOneHolder ==
     holder = 0 \/ holder \in Jobs
 
 AckedJobsStayOutOfQueue ==
-    \A job \in acked: ~(job \in SeqToSet(queue)) /\ holder # job
-
-SeqToSet(seq) ==
-    {seq[i] : i \in 1..Len(seq)}
+    \A job \in acked:
+        LET MatchesQueueEntry(entry) == entry = job
+        IN Len(SelectSeq(queue, MatchesQueueEntry)) = 0 /\ holder # job
 
 ====

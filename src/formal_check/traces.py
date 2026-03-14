@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 import json
+import re
 
 
 @dataclass(frozen=True)
@@ -132,6 +133,39 @@ def normalize_tlc_trace(
     )
 
 
+def normalize_tlc_stdout(
+    stdout: str,
+    *,
+    spec_id: str,
+    spec_kind: str,
+    check_id: str,
+    expr: str,
+    severity: str,
+    code_paths: list[str],
+    test_paths: list[str],
+) -> NormalizedTrace:
+    steps = _parse_tlc_behavior(stdout)
+    action_path = [str(step.get("action")) for step in steps if step.get("action")]
+    summary = f"Invariant {expr} failed in TLC."
+    if not steps:
+        summary += " TLC reported a violation, but the textual behavior trace could not be parsed."
+
+    return NormalizedTrace(
+        {
+            "version": 1,
+            "backend": "tlc",
+            "status": "failed",
+            "summary": summary,
+            "spec": {"id": spec_id, "kind": spec_kind},
+            "check": {"id": check_id, "kind": "invariant", "expr": expr, "severity": severity},
+            "action_path": action_path,
+            "steps": steps,
+            "mappings": {"code": code_paths, "tests": test_paths},
+            "raw_artifacts": {"source": "stdout"},
+        }
+    )
+
+
 def normalize_z3_result(
     data: dict[str, Any],
     *,
@@ -164,3 +198,77 @@ def normalize_z3_result(
 
 def load_trace(trace_path: Path) -> NormalizedTrace:
     return NormalizedTrace(json.loads(trace_path.read_text(encoding="utf-8")))
+
+
+_TLC_STATE_RE = re.compile(r"^State\s+(\d+):\s*(.+)$")
+_TLC_ASSIGNMENT_RE = re.compile(r"^(?:/\\\s*)?([A-Za-z0-9_]+)\s*=\s*(.+)$")
+
+
+def _parse_tlc_behavior(stdout: str) -> list[dict[str, Any]]:
+    marker = "Error: The behavior up to this point is:"
+    marker_index = stdout.find(marker)
+    if marker_index == -1:
+        return []
+
+    lines = stdout[marker_index + len(marker) :].splitlines()
+    steps: list[dict[str, Any]] = []
+    current_step: dict[str, Any] | None = None
+    current_key: str | None = None
+    current_value_lines: list[str] = []
+
+    def flush_assignment() -> None:
+        nonlocal current_key, current_value_lines, current_step
+        if current_step is None or current_key is None:
+            return
+        current_step["state"][current_key] = _parse_tlc_value(" ".join(part.strip() for part in current_value_lines).strip())
+        current_key = None
+        current_value_lines = []
+
+    def flush_step() -> None:
+        nonlocal current_step
+        if current_step is None:
+            return
+        flush_assignment()
+        steps.append(current_step)
+        current_step = None
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        state_match = _TLC_STATE_RE.match(line)
+        if state_match:
+            flush_step()
+            current_step = {
+                "index": int(state_match.group(1)) - 1,
+                "action": state_match.group(2),
+                "state": {},
+            }
+            continue
+
+        if current_step is None:
+            continue
+
+        assignment_match = _TLC_ASSIGNMENT_RE.match(line)
+        if assignment_match:
+            flush_assignment()
+            current_key = assignment_match.group(1)
+            current_value_lines = [assignment_match.group(2)]
+            continue
+
+        if current_key is not None:
+            current_value_lines.append(line)
+
+    flush_step()
+    return steps
+
+
+def _parse_tlc_value(value: str) -> Any:
+    if value == "TRUE":
+        return True
+    if value == "FALSE":
+        return False
+    if re.fullmatch(r"-?\d+", value):
+        return int(value)
+    return value

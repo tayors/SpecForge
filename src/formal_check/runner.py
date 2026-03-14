@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ from formal_check.traces import (
     NormalizedTrace,
     normalize_apalache_trace,
     normalize_tlc_trace,
+    normalize_tlc_stdout,
     normalize_z3_result,
 )
 
@@ -205,6 +207,29 @@ def _run_tla_invariant(
                 )
 
             if raw_trace is None or not raw_trace.exists():
+                if _tlc_reported_invariant_violation(process.stdout, invariant.expr):
+                    trace = normalize_tlc_stdout(
+                        process.stdout,
+                        spec_id=spec.id,
+                        spec_kind=spec.kind,
+                        check_id=invariant.id,
+                        expr=invariant.expr,
+                        severity=invariant.severity,
+                        code_paths=list(invariant.code_paths),
+                        test_paths=list(invariant.test_paths),
+                    )
+                    trace_path, report_path = _write_trace_bundle(trace, bundle_dir)
+                    return CheckResult(
+                        check_id=invariant.id,
+                        spec_id=spec.id,
+                        backend="tlc",
+                        status="failed",
+                        severity=invariant.severity,
+                        blocking=contract.should_block(invariant.severity),
+                        summary=f"{invariant.id} failed under TLC.",
+                        trace_path=trace_path,
+                        report_path=report_path,
+                    )
                 return _runtime_error(invariant.id, spec.id, "tlc", invariant.severity, stdout_path, stderr_path)
 
             trace = normalize_tlc_trace(
@@ -362,13 +387,16 @@ def _execute_tlc(
     invariant: Invariant,
     raw_dir: Path,
     jar_path: Path | None,
-) -> tuple[subprocess.CompletedProcess[str], Path]:
+) -> tuple[subprocess.CompletedProcess[str], Path | None]:
     if jar_path is None:
         raise ToolchainError("tla2tools.jar is unavailable")
 
-    dump_path = raw_dir / "trace.json"
-    config_path = raw_dir / "generated.cfg"
-    config_path.write_text(_generated_tlc_config(spec, invariant), encoding="utf-8")
+    workspace_root = Path(tempfile.mkdtemp(prefix="tlc-workspace-", dir=raw_dir))
+    workspace_spec_path = _copy_tlc_inputs(spec, workspace_root, raw_dir)
+    config_contents = _generated_tlc_config(spec, invariant)
+    config_path = workspace_spec_path.parent / f".formal-check-{spec.id}-{invariant.id}-{uuid.uuid4().hex[:8]}.cfg"
+    meta_dir = raw_dir / "states"
+    config_path.write_text(config_contents, encoding="utf-8")
     command = [
         "java",
         "-cp",
@@ -376,12 +404,11 @@ def _execute_tlc(
         "tlc2.TLC",
         "-config",
         str(config_path),
-        "-dumpTrace",
-        "json",
-        str(dump_path),
-        str(spec.entry_path),
+        "-metadir",
+        str(meta_dir),
+        str(workspace_spec_path.with_suffix("")),
     ]
-    return subprocess.run(command, cwd=spec.root, capture_output=True, text=True, check=False), dump_path
+    return subprocess.run(command, cwd=workspace_root, capture_output=True, text=True, check=False), None
 
 
 def _generated_tlc_config(spec: Spec, invariant: Invariant) -> str:
@@ -393,6 +420,10 @@ def _generated_tlc_config(spec: Spec, invariant: Invariant) -> str:
     if base:
         base += "\n\n"
     return base + f"INVARIANT {invariant.expr}\n"
+
+
+def _tlc_reported_invariant_violation(stdout: str, invariant_expr: str) -> bool:
+    return f"Error: Invariant {invariant_expr} is violated." in stdout
 
 
 def _find_apalache_trace(raw_dir: Path) -> Path | None:
@@ -453,3 +484,18 @@ def _run_id(spec_id: str, check_id: str) -> str:
     timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     suffix = uuid.uuid4().hex[:8]
     return f"{timestamp}-{spec_id}-{check_id}-{suffix}"
+
+
+def _copy_tlc_inputs(spec: Spec, workspace_root: Path, raw_dir: Path) -> Path:
+    for source in spec.root.rglob("*"):
+        if not source.is_file() or source.suffix not in {".tla", ".cfg"}:
+            continue
+        if raw_dir in source.parents:
+            continue
+        relative = source.relative_to(spec.root)
+        if relative.parts and relative.parts[0] in {".git", ".venv", ".pytest_cache", "output"}:
+            continue
+        target = workspace_root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+    return workspace_root / spec.entry_path.relative_to(spec.root)

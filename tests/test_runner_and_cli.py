@@ -6,6 +6,7 @@ from unittest import mock
 import hashlib
 import io
 import json
+import subprocess
 import tarfile
 import tempfile
 import textwrap
@@ -13,8 +14,8 @@ import unittest
 import zipfile
 
 from formal_check.cli import main
-from formal_check.contract import load_contract
-from formal_check.runner import run_contract
+from formal_check.contract import Invariant, Spec, load_contract
+from formal_check.runner import _execute_tlc, run_contract
 from formal_check.traces import load_trace
 
 
@@ -22,6 +23,52 @@ FIXTURES = Path(__file__).parent / "fixtures" / "traces"
 
 
 class RunnerAndCliTests(unittest.TestCase):
+    def test_execute_tlc_uses_supported_tlc_cli_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            raw_dir = root / "raw"
+            raw_dir.mkdir()
+            spec_dir = root / "formal"
+            spec_dir.mkdir()
+            spec_path = spec_dir / "RetryLease.tla"
+            cfg_path = spec_dir / "RetryLease.cfg"
+            spec_path.write_text("---- MODULE RetryLease ----\n====\n", encoding="utf-8")
+            cfg_path.write_text("INIT Init\nNEXT Next\n", encoding="utf-8")
+            spec = Spec(
+                id="retry-lease",
+                kind="tla",
+                entry="formal/RetryLease.tla",
+                module="RetryLease",
+                cfg="formal/RetryLease.cfg",
+                checker=None,
+                profiles={},
+                objective=None,
+                root=root,
+            )
+            invariant = Invariant(
+                id="at-most-one-holder",
+                spec="retry-lease",
+                expr="AtMostOneHolder",
+                kind="safety",
+                severity="critical",
+                code_paths=(),
+                test_paths=(),
+            )
+
+            with mock.patch("formal_check.runner.subprocess.run") as run_mock:
+                run_mock.return_value = subprocess.CompletedProcess(args=[], returncode=0, stdout="", stderr="")
+                _execute_tlc(spec, invariant, raw_dir, Path("/tmp/tla2tools.jar"))
+
+            command = run_mock.call_args.args[0]
+            self.assertNotIn("-dumpTrace", command)
+            config_path = Path(command[command.index("-config") + 1])
+            self.assertTrue(config_path.is_relative_to(raw_dir))
+            self.assertNotEqual(config_path.parent, spec_dir)
+            self.assertIn("-metadir", command)
+            self.assertEqual(command[command.index("-metadir") + 1], str(raw_dir / "states"))
+            self.assertTrue(Path(command[-1]).is_relative_to(raw_dir))
+            self.assertFalse(any(spec_dir.glob(".formal-check-*.cfg")))
+
     def test_cli_init_scaffolds_template(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             rc = main(["init", "--template", "workflow", "--dest", tmp_dir])
@@ -79,6 +126,78 @@ class RunnerAndCliTests(unittest.TestCase):
             result = run_contract(contract, profile="pr", cache_dir=cache_dir, manifest_path=manifest_path)
             self.assertEqual(result.exit_code, 0)
             self.assertEqual(len(result.failed_checks), 1)
+
+    def test_run_contract_marks_tlc_invariant_violations_as_failed_without_trace_file(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            project_root = Path(tmp_dir) / "project"
+            (project_root / "formal").mkdir(parents=True)
+            (project_root / "formal" / "RetryLease.tla").write_text("---- MODULE RetryLease ----\n====\n", encoding="utf-8")
+            (project_root / "formal" / "RetryLease.cfg").write_text("INIT Init\nNEXT Next\n", encoding="utf-8")
+            (project_root / "formal.yaml").write_text(
+                textwrap.dedent(
+                    """\
+                    version: 1
+                    project:
+                      name: tlc-runner-test
+                    maturity: enforced
+                    toolchains:
+                      pinset: default
+                    specs:
+                      - id: retry-lease
+                        kind: tla
+                        entry: formal/RetryLease.tla
+                        module: RetryLease
+                        cfg: formal/RetryLease.cfg
+                        checker: tlc
+                    invariants:
+                      - id: at-most-one-holder
+                        spec: retry-lease
+                        expr: AtMostOneHolder
+                        kind: safety
+                        severity: critical
+                        maps_to:
+                          code:
+                            - src/main/java/example/LeaseService.java
+                          tests:
+                            - src/test/java/example/LeaseServiceTest.java
+                    actions: []
+                    proof_obligations: []
+                    policy:
+                      block_on:
+                        - critical
+                    """
+                ),
+                encoding="utf-8",
+            )
+            contract = load_contract(project_root)
+            stdout = textwrap.dedent(
+                """\
+                TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+                Error: Invariant AtMostOneHolder is violated.
+                Error: The behavior up to this point is:
+                State 1: <Initial predicate>
+                holder = 0
+                """
+            )
+            installs = {
+                "apalache": mock.Mock(executable=Path("/tmp/apalache")),
+                "tlc": mock.Mock(executable=Path("/tmp/tla2tools.jar")),
+                "z3py": mock.Mock(python_path=None),
+            }
+            with mock.patch("formal_check.runner.resolve_installs", return_value=installs):
+                with mock.patch("formal_check.runner.subprocess.run") as run_mock:
+                    run_mock.return_value = subprocess.CompletedProcess(args=[], returncode=12, stdout=stdout, stderr="")
+                    result = run_contract(contract, profile="full")
+
+            self.assertEqual(result.exit_code, 2)
+            self.assertEqual(len(result.failed_checks), 1)
+            self.assertEqual(result.errors, [])
+            self.assertEqual(result.failed_checks[0].backend, "tlc")
+            self.assertIsNotNone(result.failed_checks[0].trace_path)
+            self.assertIsNotNone(result.failed_checks[0].report_path)
+            trace = load_trace(result.failed_checks[0].trace_path)
+            self.assertEqual(trace.payload["steps"][0]["action"], "<Initial predicate>")
+            self.assertEqual(trace.payload["steps"][0]["state"]["holder"], 0)
 
     def _write_project(self, project_root: Path, maturity: str) -> None:
         (project_root / "formal").mkdir()
