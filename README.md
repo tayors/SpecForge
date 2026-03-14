@@ -16,7 +16,8 @@ obligations.
 ## Quick start
 
 ```bash
-cd /Users/brahm/formal-check
+git clone https://github.com/tayors/SpecForge.git
+cd SpecForge
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
@@ -88,8 +89,9 @@ formal-check run --project-root /path/to/other-repo --profile pr
 Expose the skill to Codex by linking or copying `skill/formal-check/` into your skills directory:
 
 ```bash
+export SPECFORGE_HOME=/path/to/SpecForge
 mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills"
-ln -s /Users/brahm/formal-check/skill/formal-check "${CODEX_HOME:-$HOME/.codex}/skills/formal-check"
+ln -snf "$SPECFORGE_HOME/skill/formal-check" "${CODEX_HOME:-$HOME/.codex}/skills/formal-check"
 ```
 
 Once installed, Codex can use `$formal-check` in repos that expose `formal.yaml`.
@@ -112,11 +114,11 @@ Both wrappers sync the pinned toolchains before running checks.
 
 ## How other people use it
 
-Publish this directory as a shared git repo, then teammates can:
+Clone the shared repo, install the CLI, and sync the pinned toolchains:
 
 ```bash
-git clone <formal-check-repo-url>
-cd formal-check
+git clone https://github.com/tayors/SpecForge.git
+cd SpecForge
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
